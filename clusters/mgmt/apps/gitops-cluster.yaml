@@ -1,0 +1,128 @@
+---
+# Cluster API Cluster object
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: "gitops-cluster"
+  namespace: "default"
+  labels:
+    cni: "cilium"
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - "10.246.0.0/16"
+    services:
+      cidrBlocks:
+        - "10.98.0.0/12"
+  infrastructureRef:
+    apiVersion: infrastructure.e2enetworks.com/v1beta1
+    kind: E2ECluster
+    name: "gitops-cluster"
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: KubeadmControlPlane
+    name: "gitops-cluster-control-plane"
+---
+# E2E Infrastructure Cluster
+apiVersion: infrastructure.e2enetworks.com/v1beta1
+kind: E2ECluster
+metadata:
+  name: "gitops-cluster"
+  namespace: "default"
+spec:
+  region: "ncr"
+  location: "Delhi"
+  network:
+    vpcID: ""
+  loadBalancer:
+    securityGroupID: 37263
+---
+# Control Plane
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlane
+metadata:
+  name: "gitops-cluster-control-plane"
+  namespace: "default"
+spec:
+  replicas: 1
+  version: "v1.33.0"
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.e2enetworks.com/v1beta1
+      kind: E2EMachineTemplate
+      name: "gitops-cluster-control-plane"
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration: {}
+    joinConfiguration:
+      nodeRegistration: {}
+---
+# Control Plane Machine Template
+apiVersion: infrastructure.e2enetworks.com/v1beta1
+kind: E2EMachineTemplate
+metadata:
+  name: "gitops-cluster-control-plane"
+  namespace: "default"
+spec:
+  template:
+    spec:
+      plan: "C3-4vCPU-8RAM-100DISK-C3-Onetemplate-Ubuntu24.04-Delhi"
+      image: "Ubuntu-24.04-Distro"
+      location: "Delhi"
+      sshKeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCm3H3MsU3ccJWRpeG37767pvVAOHatDCX1fFO3gjIBVvI4G9RJ8UUHJixy1+nJzoe4Ffxvw1OiDcGikyU7cWeWZsU1ekPtN/t9tUX36tFuaNyRuNh21x01WSq/N9xBDxZMQuCRFBXN11/SPWIDDTXCIYyQDdJt6TyzPLm7mWu1fsOWp1r9i/WfMOFDRQIpZQobqW0taahPTTteuyZrJlNA2hTqte3v1M25nmfEH5VrdjfMCET2bP7mkAnFMMguXmgD84jAhi4Gos8bUmbC9V+hfIWzjvoH6FBeem49y+dxt+sCuMPuu6H8cYovFZ+9eC5jSR3MNpZdO1c0Mp2Naho2cpqBiVrgBLf6tRnqVtagK9GLDZQuyxNNuanPtLbeflbVKDufKLik54vWifHvWLcBQfqF79wS1u30Spu6hVK73NB4j0KyXUADAnQ7OmM2gUbZxm8AiXRXBRtzqVtFy9l16LJQGMXaBPhfMsV7zcvOhBvsyINsTVdYZmuWCyvIt2s= roniee007@rounak-Latitude"
+      enablePublicIP: true
+---
+# Worker MachineDeployment
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: "gitops-cluster-md-0"
+  namespace: "default"
+spec:
+  clusterName: "gitops-cluster"
+  replicas: 1
+  selector:
+    matchLabels: {}
+  template:
+    spec:
+      clusterName: "gitops-cluster"
+      version: "v1.33.0"
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: "gitops-cluster-md-0"
+      infrastructureRef:
+        apiVersion: infrastructure.e2enetworks.com/v1beta1
+        kind: E2EMachineTemplate
+        name: "gitops-cluster-md-0"
+---
+# Worker Machine Template
+apiVersion: infrastructure.e2enetworks.com/v1beta1
+kind: E2EMachineTemplate
+metadata:
+  name: "gitops-cluster-md-0"
+  namespace: "default"
+spec:
+  template:
+    spec:
+      plan: "C3-4vCPU-8RAM-100DISK-C3-Onetemplate-Ubuntu24.04-Delhi"
+      image: "Ubuntu-24.04-Distro"
+      location: "Delhi"
+      sshKeys:
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCm3H3MsU3ccJWRpeG37767pvVAOHatDCX1fFO3gjIBVvI4G9RJ8UUHJixy1+nJzoe4Ffxvw1OiDcGikyU7cWeWZsU1ekPtN/t9tUX36tFuaNyRuNh21x01WSq/N9xBDxZMQuCRFBXN11/SPWIDDTXCIYyQDdJt6TyzPLm7mWu1fsOWp1r9i/WfMOFDRQIpZQobqW0taahPTTteuyZrJlNA2hTqte3v1M25nmfEH5VrdjfMCET2bP7mkAnFMMguXmgD84jAhi4Gos8bUmbC9V+hfIWzjvoH6FBeem49y+dxt+sCuMPuu6H8cYovFZ+9eC5jSR3MNpZdO1c0Mp2Naho2cpqBiVrgBLf6tRnqVtagK9GLDZQuyxNNuanPtLbeflbVKDufKLik54vWifHvWLcBQfqF79wS1u30Spu6hVK73NB4j0KyXUADAnQ7OmM2gUbZxm8AiXRXBRtzqVtFy9l16LJQGMXaBPhfMsV7zcvOhBvsyINsTVdYZmuWCyvIt2s= roniee007@rounak-Latitude"
+      enablePublicIP: true
+---
+# Worker Bootstrap Config
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: "gitops-cluster-md-0"
+  namespace: "default"
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration: {}
