@@ -1,0 +1,6 @@
+kind: ConfigMap
+metadata:
+  name: gitops-test
+  namespace: default
+data:
+  message: "deployed by flux"
